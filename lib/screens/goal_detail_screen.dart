@@ -1,95 +1,53 @@
 import 'package:flutter/material.dart';
-import 'package:table_calendar/table_calendar.dart';
-import '../models/goal.dart';
-import '../services/database_helper.dart';
+import 'package:goal_tracker/models/goal.dart';
+import 'package:goal_tracker/models/goal_provider.dart';
 
-class GoalDetailScreen extends StatefulWidget {
+class GoalDetailScreen extends StatelessWidget {
   final Goal goal;
 
-  const GoalDetailScreen({super.key, required this.goal});
-
-  @override
-  State<GoalDetailScreen> createState() => _GoalDetailScreenState();
-}
-
-class _GoalDetailScreenState extends State<GoalDetailScreen> {
-  CalendarFormat _calendarFormat = CalendarFormat.month;
-  DateTime _focusedDay = DateTime.now();
+  GoalDetailScreen({required this.goal});
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.goal.title),
+        title: Text(goal.title),
       ),
-      body: Column(
-        children: [
-          TableCalendar(
-            firstDay: DateTime.utc(2020, 1, 1),
-            lastDay: DateTime.utc(2030, 12, 31),
-            focusedDay: _focusedDay,
-            calendarFormat: _calendarFormat,
-            onFormatChanged: (format) {
-              setState(() {
-                _calendarFormat = format;
-              });
-            },
-            onDaySelected: (selectedDay, focusedDay) {
-              _onDaySelected(selectedDay);
-            },
-            calendarBuilders: CalendarBuilders(
-              markerBuilder: (context, day, events) {
-                String? status = widget.goal.daysTracking[day.toIso8601String().split('T')[0]];
-                if (status == 'yes') {
-                  return Icon(Icons.check, color: Colors.green);
-                } else if (status == 'no') {
-                  return Icon(Icons.close, color: Colors.red);
-                }
-                return null;
-              },
+      body: Padding(
+        padding: EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              goal.title,
+              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
             ),
-          ),
-          Expanded(
-            child: Center(
-              child: Text('Select a day to mark progress or view goal status'),
+            SizedBox(height: 8),
+            Text(goal.description, style: TextStyle(fontSize: 16)),
+            SizedBox(height: 16),
+            // Display calendar or list of progress here
+            Expanded(
+              child: ListView.builder(
+                itemCount: goal.progress.length,
+                itemBuilder: (context, index) {
+                  DateTime date = goal.progress.keys.elementAt(index);
+                  bool isDone = goal.progress[date] ?? false;
+                  return ListTile(
+                    title: Text(date.toIso8601String().split('T')[0]),
+                    trailing: Checkbox(
+                      value: isDone,
+                      onChanged: (value) {
+                        // Update progress logic
+                        GoalProvider.instance.updateGoalProgress(goal.id!, date, value ?? false);
+                      },
+                    ),
+                  );
+                },
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
-    );
-  }
-
-  void _onDaySelected(DateTime day) {
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: Text('Mark progress for ${day.toIso8601String().split('T')[0]}'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              ElevatedButton(
-                onPressed: () async {
-                  widget.goal.daysTracking[day.toIso8601String().split('T')[0]] = 'yes';
-                  await DatabaseHelper().updateGoalDayTracking(widget.goal.id!, widget.goal.daysTracking);
-                  setState(() {});
-                  Navigator.pop(context);
-                },
-                child: const Text('Achieved'),
-              ),
-              ElevatedButton(
-                onPressed: () async {
-                  widget.goal.daysTracking[day.toIso8601String().split('T')[0]] = 'no';
-                  await DatabaseHelper().updateGoalDayTracking(widget.goal.id!, widget.goal.daysTracking);
-                  setState(() {});
-                  Navigator.pop(context);
-                },
-                child: const Text('Missed'),
-              ),
-            ],
-          ),
-        );
-      },
     );
   }
 }
