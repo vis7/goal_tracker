@@ -61,6 +61,7 @@ class HomeScreen extends StatelessWidget {
       drawer: const AppDrawer(),
       body: const ListViewScreen(), // Default to detailed list view
       floatingActionButton: FloatingActionButton(
+        heroTag: 'main_home_tag',
         onPressed: () {
           Navigator.push(
             context,

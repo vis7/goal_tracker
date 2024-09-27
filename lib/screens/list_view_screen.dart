@@ -34,6 +34,7 @@ class ListViewScreen extends StatelessWidget {
       ),
       drawer: const AppDrawer(), // Use the AppDrawer here
       floatingActionButton: FloatingActionButton(
+        heroTag: 'list_view_tag',
         onPressed: () {
           Navigator.push(
             context,

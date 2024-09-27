@@ -49,17 +49,17 @@ class DatabaseHelper {
   Future<List<Goal>> fetchGoals() async {
     final db = await database;
     final result = await db.query('goals');
-    return result.map((json) => Goal.fromJson(json)).toList();
+    return result.map((json) => Goal.fromMap(json)).toList();
   }
 
-  // Update goal day tracking
-  Future<int> updateGoalDayTracking(int id, Map<String, String> daysTracking) async {
+  // Update a goal's full data (including daysTracking)
+  Future<int> updateGoal(Goal goal) async {
     final db = await database;
     return await db.update(
       'goals',
-      {'daysTracking': Goal.encodeDaysTracking(daysTracking)},
+      goal.toMap(),
       where: 'id = ?',
-      whereArgs: [id],
+      whereArgs: [goal.id],
     );
   }
 

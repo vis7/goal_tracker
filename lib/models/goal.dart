@@ -4,7 +4,7 @@ class Goal {
   int? id;
   String title;
   String description;
-  Map<String, String> daysTracking; // e.g., {"2023-09-21": "yes", "2023-09-22": "no"}
+  Map<String, String?> daysTracking; // "yes", "no", or null for unmarked days
 
   Goal({
     this.id,
@@ -24,22 +24,31 @@ class Goal {
   }
 
   // Convert JSON (Map) to Goal object
-  factory Goal.fromJson(Map<String, dynamic> json) {
+  factory Goal.fromMap(Map<String, dynamic> map) {
     return Goal(
-      id: json['id'],
-      title: json['title'],
-      description: json['description'],
-      daysTracking: decodeDaysTracking(json['daysTracking']),
+      id: map['id'],
+      title: map['title'],
+      description: map['description'],
+      daysTracking: decodeDaysTracking(map['daysTracking']),
     );
   }
 
   // Encode daysTracking to a string (to store in SQLite)
-  static String encodeDaysTracking(Map<String, String> daysTracking) {
+  static String encodeDaysTracking(Map<String, String?> daysTracking) {
     return json.encode(daysTracking);
   }
 
   // Decode daysTracking from a string (retrieved from SQLite)
-  static Map<String, String> decodeDaysTracking(String encoded) {
-    return Map<String, String>.from(json.decode(encoded));
+  static Map<String, String?> decodeDaysTracking(String encoded) {
+    return Map<String, String?>.from(json.decode(encoded));
+  }
+
+  Map<String, dynamic> toMap() {
+    return {
+      'id': id,
+      'title': title,
+      'description': description,
+      'daysTracking': jsonEncode(daysTracking), // Convert map to JSON string
+    };
   }
 }

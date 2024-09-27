@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:table_calendar/table_calendar.dart';
 import '../models/goal.dart';
 import '../services/database_helper.dart';
-import '../widgets/app_drawer.dart'; // Import the AppDrawer
-import 'add_goal_screen.dart'; // Import the AddGoalScreen
+import '../widgets/app_drawer.dart';
+import 'add_goal_screen.dart';
 
 class MonthViewScreen extends StatefulWidget {
   const MonthViewScreen({super.key});
@@ -23,13 +23,15 @@ class _MonthViewScreenState extends State<MonthViewScreen> {
     _loadGoals();
   }
 
-  void _loadGoals() async {
+  // Load goals from the database
+  Future<void> _loadGoals() async {
     List<Goal> goals = await DatabaseHelper().fetchGoals();
     setState(() {
       _goals = goals;
     });
   }
 
+  // Handle swipe to switch between goals
   void _onSwipeGoal(DragEndDetails details) {
     if (details.primaryVelocity! < 0) {
       setState(() {
@@ -42,6 +44,7 @@ class _MonthViewScreenState extends State<MonthViewScreen> {
     }
   }
 
+  // Handle swipe up/down for month navigation
   void _onSwipeMonth(DragEndDetails details) {
     if (details.primaryVelocity! < 0) {
       setState(() {
@@ -52,6 +55,25 @@ class _MonthViewScreenState extends State<MonthViewScreen> {
         _focusedDay = DateTime(_focusedDay.year, _focusedDay.month - 1, 1);
       });
     }
+  }
+
+  // Toggle between done/not done/blank statuses for goals
+  void _toggleStatus(Goal goal, DateTime day) async {
+    String formattedDay = day.toIso8601String().split('T')[0]; // Format day
+
+    setState(() {
+      String? currentStatus = goal.daysTracking[formattedDay];
+      if (currentStatus == null || currentStatus == '') {
+        goal.daysTracking[formattedDay] = 'yes'; // Mark as done
+      } else if (currentStatus == 'yes') {
+        goal.daysTracking[formattedDay] = 'no'; // Mark as not done
+      } else {
+        goal.daysTracking[formattedDay] = ''; // Clear status
+      }
+    });
+
+    // Update the goal in the database
+    await DatabaseHelper().updateGoal(goal);
   }
 
   @override
@@ -75,11 +97,13 @@ class _MonthViewScreenState extends State<MonthViewScreen> {
       ),
       drawer: const AppDrawer(),
       floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          Navigator.push(
+        heroTag: 'add_goal_month_view',
+        onPressed: () async {
+          await Navigator.push(
             context,
             MaterialPageRoute(builder: (context) => const AddGoalScreen()),
           );
+          await _loadGoals(); // Refresh goals after adding a new goal
         },
         child: const Icon(Icons.add),
       ),
@@ -92,6 +116,7 @@ class _MonthViewScreenState extends State<MonthViewScreen> {
           focusedDay: _focusedDay,
           calendarFormat: CalendarFormat.month,
           onDaySelected: (selectedDay, focusedDay) {
+            _toggleStatus(currentGoal, selectedDay);
             setState(() {
               _focusedDay = focusedDay;
             });
@@ -101,11 +126,11 @@ class _MonthViewScreenState extends State<MonthViewScreen> {
               String? status = currentGoal.daysTracking[day.toIso8601String().split('T')[0]];
               if (status == 'yes') {
                 return const Center(
-                  child: Icon(Icons.check, color: Colors.green, size: 30),
+                  child: Icon(Icons.check, color: Colors.green, size: 20),
                 );
               } else if (status == 'no') {
                 return const Center(
-                  child: Icon(Icons.close, color: Colors.red, size: 30),
+                  child: Icon(Icons.close, color: Colors.red, size: 20),
                 );
               }
               return null;

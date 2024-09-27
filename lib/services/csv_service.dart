@@ -14,7 +14,7 @@ class CsvService {
     // Add goal data
     for (var goal in goals) {
       goal.daysTracking.forEach((date, status) {
-        rows.add([goal.title, goal.description, date, status]);
+        rows.add([goal.title, goal.description, date, status ?? '']); // Empty string for unmarked days
       });
     }
 
@@ -35,14 +35,19 @@ class CsvService {
     final contents = await file.readAsString();
 
     List<List<dynamic>> rows = const CsvToListConverter().convert(contents);
+
     for (var row in rows.skip(1)) { // Skip header row
       String title = row[0];
       String description = row[1];
       String date = row[2];
       String status = row[3];
 
-      // Fetch existing goals, or insert new ones based on title
+      // Fetch existing goals or insert new ones based on title
       // Update goal's daysTracking for specific date
+      // Handle empty string as `null` for unmarked days
+      String? trackedStatus = status.isEmpty ? null : status;
+
+      // Update goal logic goes here
     }
   }
 }

@@ -186,6 +186,7 @@ class _HomeScreenState extends State<HomeScreen> {
         },
       ),
       floatingActionButton: FloatingActionButton(
+        heroTag: 'home_view_tag',
         onPressed: () {
           Navigator.push(
             context,

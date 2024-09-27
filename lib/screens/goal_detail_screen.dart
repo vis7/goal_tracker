@@ -45,7 +45,7 @@ class _GoalDetailScreenState extends State<GoalDetailScreen> {
                 } else if (status == 'no') {
                   return Icon(Icons.close, color: Colors.red);
                 }
-                return null;
+                return null; // No marker for unmarked days
               },
             ),
           ),
@@ -60,18 +60,19 @@ class _GoalDetailScreenState extends State<GoalDetailScreen> {
   }
 
   void _onDaySelected(DateTime day) {
+    String formattedDate = day.toIso8601String().split('T')[0];
     showDialog(
       context: context,
       builder: (context) {
         return AlertDialog(
-          title: Text('Mark progress for ${day.toIso8601String().split('T')[0]}'),
+          title: Text('Mark progress for $formattedDate'),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               ElevatedButton(
                 onPressed: () async {
-                  widget.goal.daysTracking[day.toIso8601String().split('T')[0]] = 'yes';
-                  await DatabaseHelper().updateGoalDayTracking(widget.goal.id!, widget.goal.daysTracking);
+                  widget.goal.daysTracking[formattedDate] = 'yes';
+                  await DatabaseHelper().updateGoal(widget.goal);
                   setState(() {});
                   Navigator.pop(context);
                 },
@@ -79,12 +80,21 @@ class _GoalDetailScreenState extends State<GoalDetailScreen> {
               ),
               ElevatedButton(
                 onPressed: () async {
-                  widget.goal.daysTracking[day.toIso8601String().split('T')[0]] = 'no';
-                  await DatabaseHelper().updateGoalDayTracking(widget.goal.id!, widget.goal.daysTracking);
+                  widget.goal.daysTracking[formattedDate] = 'no';
+                  await DatabaseHelper().updateGoal(widget.goal);
                   setState(() {});
                   Navigator.pop(context);
                 },
                 child: const Text('Missed'),
+              ),
+              ElevatedButton(
+                onPressed: () async {
+                  widget.goal.daysTracking[formattedDate] = null; // Unmarked
+                  await DatabaseHelper().updateGoal(widget.goal);
+                  setState(() {});
+                  Navigator.pop(context);
+                },
+                child: const Text('Clear Mark'),
               ),
             ],
           ),

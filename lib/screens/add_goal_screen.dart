@@ -57,8 +57,7 @@ class _AddGoalScreenState extends State<AddGoalScreen> {
                 final goal = Goal(
                   title: _titleController.text,
                   description: _descriptionController.text,
-                  allowedDays: _selectedDays,
-                  daysTracking: {},
+                  daysTracking: {}, // Initialize empty tracking map
                 );
                 await DatabaseHelper().insertGoal(goal);
                 Navigator.pop(context);
