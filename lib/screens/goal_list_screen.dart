@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:goal_tracker/models/goal.dart';
-import 'package:goal_tracker/models/goal_provider.dart';
-import 'package:goal_tracker/widgets/sidebar.dart';
-import 'package:goal_tracker/widgets/goal_tile.dart';
-import 'package:goal_tracker/screens/new_goal_screen.dart';
+import '../models/goal.dart';
+import '../database_helper.dart';
+import 'add_goal_screen.dart';
+import 'week_view_screen.dart';
+import 'month_view_screen.dart';
+import 'settings_screen.dart';
 
 class GoalListScreen extends StatefulWidget {
   @override
@@ -16,34 +17,126 @@ class _GoalListScreenState extends State<GoalListScreen> {
   @override
   void initState() {
     super.initState();
-    _loadGoals();
+    _fetchGoals();
   }
 
-  Future<void> _loadGoals() async {
-    _goals = await GoalProvider.instance.fetchGoals();
-    setState(() {});
+  Future<void> _fetchGoals() async {
+    List<Goal> goals = await DatabaseHelper.instance.fetchGoals();
+    setState(() {
+      _goals = goals;
+    });
+  }
+
+  void _navigateToAddGoal() async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => AddGoalScreen()),
+    );
+    _fetchGoals();
+  }
+
+  void _navigateToWeekView() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => WeekViewScreen()),
+    );
+  }
+
+  void _navigateToMonthView() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => MonthViewScreen()),
+    );
+  }
+
+  void _navigateToSettings() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => SettingsScreen()),
+    );
+  }
+
+  void _openFeedback() {
+    // Open email client with predefined email address
+    final Uri emailLaunchUri = Uri(
+      scheme: 'mailto',
+      path: 'feedback@example.com',
+    );
+    launch(emailLaunchUri.toString());
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Goals'),
+        title: Text('Goal Tracker'),
+        actions: [
+          IconButton(
+            icon: Icon(Icons.add),
+            onPressed: _navigateToAddGoal,
+          ),
+        ],
       ),
-      drawer: Sidebar(),
+      drawer: Drawer(
+        child: ListView(
+          children: [
+            DrawerHeader(child: Text('Goal Tracker')),
+            ListTile(
+              leading: Icon(Icons.list),
+              title: Text('Detail List View'),
+              onTap: () => Navigator.pop(context),
+            ),
+            ListTile(
+              leading: Icon(Icons.calendar_view_week),
+              title: Text('Week View'),
+              onTap: () {
+                Navigator.pop(context);
+                _navigateToWeekView();
+              },
+            ),
+            ListTile(
+              leading: Icon(Icons.calendar_today),
+              title: Text('Month View'),
+              onTap: () {
+                Navigator.pop(context);
+                _navigateToMonthView();
+              },
+            ),
+            ListTile(
+              leading: Icon(Icons.import_export),
+              title: Text('Import/Export Goals'),
+              onTap: () {
+                // Implement import/export functionality
+              },
+            ),
+            ListTile(
+              leading: Icon(Icons.feedback),
+              title: Text('Feedback'),
+              onTap: _openFeedback,
+            ),
+            ListTile(
+              leading: Icon(Icons.settings),
+              title: Text('Settings'),
+              onTap: () {
+                Navigator.pop(context);
+                _navigateToSettings();
+              },
+            ),
+          ],
+        ),
+      ),
       body: ListView.builder(
         itemCount: _goals.length,
         itemBuilder: (context, index) {
-          return GoalTile(goal: _goals[index]); // Pass the `Goal` object
-        },
-      ),
-      floatingActionButton: FloatingActionButton(
-        child: Icon(Icons.add),
-        onPressed: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (_) => NewGoalScreen()),
-          ).then((value) => _loadGoals()); // Refresh the list after adding a goal
+          Goal goal = _goals[index];
+          return ListTile(
+            title: Text(goal.title),
+            subtitle: Text(goal.description ?? ''),
+            trailing: Icon(Icons.chevron_right),
+            onTap: () {
+              // Navigate to goal details or editing
+            },
+          );
         },
       ),
     );

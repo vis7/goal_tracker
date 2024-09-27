@@ -1,13 +1,12 @@
 import 'package:flutter/material.dart';
 
-class ThemeProvider {
-  static final lightTheme = ThemeData(
-    primarySwatch: Colors.red,
-    brightness: Brightness.light,
-  );
+class ThemeProvider extends ChangeNotifier {
+  ThemeMode _themeMode = ThemeMode.system;
 
-  static final darkTheme = ThemeData(
-    primarySwatch: Colors.red,
-    brightness: Brightness.dark,
-  );
+  ThemeMode get themeMode => _themeMode;
+
+  void setTheme(ThemeMode mode) {
+    _themeMode = mode;
+    notifyListeners();
+  }
 }

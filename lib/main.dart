@@ -1,20 +1,28 @@
 import 'package:flutter/material.dart';
-import 'package:goal_tracker/screens/goal_list_screen.dart';
-import 'package:goal_tracker/utils/theme_provider.dart';
+import 'package:provider/provider.dart';
+import 'screens/goal_list_screen.dart';
+import 'utils/theme_provider.dart';
 
 void main() {
-  runApp(MyApp());
+  runApp(GoalTrackerApp());
 }
 
-class MyApp extends StatelessWidget {
+class GoalTrackerApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Goal Tracker',
-      theme: ThemeProvider.lightTheme,
-      darkTheme: ThemeProvider.darkTheme,
-      themeMode: ThemeMode.system,
-      home: GoalListScreen(),
+    return ChangeNotifierProvider<ThemeProvider>(
+      create: (_) => ThemeProvider(),
+      child: Consumer<ThemeProvider>(
+        builder: (_, themeProvider, __) {
+          return MaterialApp(
+            title: 'Goal Tracker',
+            themeMode: themeProvider.themeMode,
+            theme: ThemeData.light(),
+            darkTheme: ThemeData.dark(),
+            home: GoalListScreen(),
+          );
+        },
+      ),
     );
   }
 }
