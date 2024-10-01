@@ -9,19 +9,20 @@ class AddGoalScreen extends StatefulWidget {
 
 class _AddGoalScreenState extends State<AddGoalScreen> {
   final _formKey = GlobalKey<FormState>();
-  String _title;
-  String _description;
+  String _title = '';
+  String _description = '';
   List<bool> _selectedDays = List.generate(7, (index) => false);
 
   void _saveGoal() async {
-    if (_formKey.currentState.validate()) {
-      _formKey.currentState.save();
+    if (_formKey.currentState!.validate()) {
+      _formKey.currentState!.save();
       List<int> daysOfWeek = [];
       for (int i = 0; i < 7; i++) {
         if (_selectedDays[i]) daysOfWeek.add(i + 1);
       }
 
       Goal newGoal = Goal(
+        id: 0, // id will be auto-incremented by the database
         title: _title,
         description: _description,
         daysOfWeek: daysOfWeek,
@@ -46,12 +47,12 @@ class _AddGoalScreenState extends State<AddGoalScreen> {
               TextFormField(
                 decoration: InputDecoration(labelText: 'Title'),
                 validator: (value) =>
-                    value.isEmpty ? 'Please enter a title' : null,
-                onSaved: (value) => _title = value,
+                    value == null || value.isEmpty ? 'Please enter a title' : null,
+                onSaved: (value) => _title = value ?? '',
               ),
               TextFormField(
                 decoration: InputDecoration(labelText: 'Description'),
-                onSaved: (value) => _description = value,
+                onSaved: (value) => _description = value ?? '',
               ),
               SizedBox(height: 20),
               Text('Select Days of the Week'),

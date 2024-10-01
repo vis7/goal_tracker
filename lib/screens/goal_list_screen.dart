@@ -5,6 +5,7 @@ import 'add_goal_screen.dart';
 import 'week_view_screen.dart';
 import 'month_view_screen.dart';
 import 'settings_screen.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class GoalListScreen extends StatefulWidget {
   @override
@@ -56,13 +57,17 @@ class _GoalListScreenState extends State<GoalListScreen> {
     );
   }
 
-  void _openFeedback() {
+  void _openFeedback() async {
     // Open email client with predefined email address
     final Uri emailLaunchUri = Uri(
       scheme: 'mailto',
       path: 'feedback@example.com',
     );
-    launch(emailLaunchUri.toString());
+    if (await canLaunch(emailLaunchUri.toString())) {
+      await launch(emailLaunchUri.toString());
+    } else {
+      // Could not launch email client
+    }
   }
 
   @override
@@ -70,21 +75,39 @@ class _GoalListScreenState extends State<GoalListScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text('Goal Tracker'),
-        actions: [
-          IconButton(
-            icon: Icon(Icons.add),
-            onPressed: _navigateToAddGoal,
-          ),
-        ],
       ),
       drawer: Drawer(
         child: ListView(
+          padding: EdgeInsets.zero, // Ensure no padding at the top
           children: [
-            DrawerHeader(child: Text('Goal Tracker')),
+            DrawerHeader(
+              decoration: BoxDecoration(
+                color: Theme.of(context).primaryColor,
+              ),
+              child: Text(
+                'Goal Tracker',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 24,
+                ),
+              ),
+            ),
+            ListTile(
+              leading: Icon(Icons.add),
+              title: Text('Add Goal'),
+              onTap: () {
+                Navigator.pop(context); // Close the drawer
+                _navigateToAddGoal();
+              },
+            ),
+            Divider(),
             ListTile(
               leading: Icon(Icons.list),
               title: Text('Detail List View'),
-              onTap: () => Navigator.pop(context),
+              onTap: () {
+                Navigator.pop(context);
+                // Since we're already on Detail List View, no need to navigate.
+              },
             ),
             ListTile(
               leading: Icon(Icons.calendar_view_week),
@@ -102,17 +125,22 @@ class _GoalListScreenState extends State<GoalListScreen> {
                 _navigateToMonthView();
               },
             ),
+            Divider(),
             ListTile(
               leading: Icon(Icons.import_export),
               title: Text('Import/Export Goals'),
               onTap: () {
+                Navigator.pop(context);
                 // Implement import/export functionality
               },
             ),
             ListTile(
               leading: Icon(Icons.feedback),
               title: Text('Feedback'),
-              onTap: _openFeedback,
+              onTap: () {
+                Navigator.pop(context);
+                _openFeedback();
+              },
             ),
             ListTile(
               leading: Icon(Icons.settings),
@@ -131,7 +159,7 @@ class _GoalListScreenState extends State<GoalListScreen> {
           Goal goal = _goals[index];
           return ListTile(
             title: Text(goal.title),
-            subtitle: Text(goal.description ?? ''),
+            subtitle: Text(goal.description),
             trailing: Icon(Icons.chevron_right),
             onTap: () {
               // Navigate to goal details or editing

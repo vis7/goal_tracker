@@ -29,8 +29,10 @@ class SettingsScreen extends StatelessWidget {
                 value: ThemeMode.dark,
               ),
             ],
-            onChanged: (ThemeMode mode) {
-              themeProvider.setTheme(mode);
+            onChanged: (ThemeMode? mode) {
+              if (mode != null) {
+                themeProvider.setTheme(mode);
+              }
             },
           ),
         ));

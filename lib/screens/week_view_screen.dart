@@ -3,6 +3,11 @@ import '../models/goal.dart';
 import '../database_helper.dart';
 import 'package:table_calendar/table_calendar.dart';
 import '../models/goal_status.dart';
+import 'add_goal_screen.dart';
+import 'goal_list_screen.dart';
+import 'month_view_screen.dart';
+import 'settings_screen.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class WeekViewScreen extends StatefulWidget {
   @override
@@ -11,7 +16,8 @@ class WeekViewScreen extends StatefulWidget {
 
 class _WeekViewScreenState extends State<WeekViewScreen> {
   CalendarFormat _calendarFormat = CalendarFormat.week;
-  DateTime _selectedDay = DateTime.now();
+  DateTime _focusedDay = DateTime.now();
+  DateTime? _selectedDay;
   Map<DateTime, List<Goal>> _events = {};
   List<Goal> _goals = [];
 
@@ -30,19 +36,17 @@ class _WeekViewScreenState extends State<WeekViewScreen> {
   }
 
   void _prepareEvents() {
-    // Prepare events map for TableCalendar
     _events = {};
     _goals.forEach((goal) {
       goal.daysOfWeek.forEach((day) {
-        DateTime date = _getNextWeekday(DateTime.now(), day);
+        DateTime date = _getNextWeekday(_focusedDay, day);
         if (_events[date] == null) _events[date] = [];
-        _events[date].add(goal);
+        _events[date]!.add(goal);
       });
     });
   }
 
   DateTime _getNextWeekday(DateTime startDate, int weekday) {
-    // Returns the next date for the given weekday
     int daysToAdd = (weekday - startDate.weekday + 7) % 7;
     return startDate.add(Duration(days: daysToAdd));
   }
@@ -51,34 +55,79 @@ class _WeekViewScreenState extends State<WeekViewScreen> {
     if (!isSameDay(_selectedDay, selectedDay)) {
       setState(() {
         _selectedDay = selectedDay;
+        _focusedDay = focusedDay;
       });
     }
   }
 
   Future<void> _markGoalStatus(Goal goal, int status) async {
-    String dateStr = _selectedDay.toIso8601String().split('T').first;
-    GoalStatus goalStatus = await DatabaseHelper.instance
-        .getGoalStatus(goal.id, dateStr);
+    if (_selectedDay != null && !_selectedDay!.isAfter(DateTime.now())) {
+      String dateStr = _selectedDay!.toIso8601String().split('T').first;
+      GoalStatus? goalStatus = await DatabaseHelper.instance
+          .getGoalStatus(goal.id, dateStr);
 
-    if (goalStatus == null) {
-      // Insert new status
-      await DatabaseHelper.instance.insertGoalStatus(
-        GoalStatus(
-          goalId: goal.id,
-          date: dateStr,
-          status: status,
-        ),
-      );
+      if (goalStatus == null) {
+        await DatabaseHelper.instance.insertGoalStatus(
+          GoalStatus(
+            goalId: goal.id,
+            date: dateStr,
+            status: status,
+          ),
+        );
+      } else {
+        goalStatus.status = status;
+        await DatabaseHelper.instance.updateGoalStatus(goalStatus);
+      }
+      setState(() {});
     } else {
-      // Update existing status
-      goalStatus.status = status;
-      await DatabaseHelper.instance.insertGoalStatus(goalStatus);
+      // Cannot mark future dates
     }
-    setState(() {});
+  }
+
+  void _navigateToAddGoal() async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => AddGoalScreen()),
+    );
+    _fetchGoals();
+  }
+
+  void _navigateToDetailListView() {
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (context) => GoalListScreen()),
+    );
+  }
+
+  void _navigateToMonthView() {
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (context) => MonthViewScreen()),
+    );
+  }
+
+  void _navigateToSettings() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => SettingsScreen()),
+    );
+  }
+
+  void _openFeedback() async {
+    final Uri emailLaunchUri = Uri(
+      scheme: 'mailto',
+      path: 'feedback@example.com',
+    );
+    if (await canLaunch(emailLaunchUri.toString())) {
+      await launch(emailLaunchUri.toString());
+    } else {
+      // Could not launch email client
+    }
   }
 
   Widget _buildGoalsList() {
-    List<Goal> dayGoals = _events[_selectedDay] ?? [];
+    if (_selectedDay == null) return Container();
+    List<Goal> dayGoals = _events[_selectedDay!] ?? [];
     return ListView.builder(
       itemCount: dayGoals.length,
       itemBuilder: (context, index) {
@@ -106,28 +155,109 @@ class _WeekViewScreenState extends State<WeekViewScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-        appBar: AppBar(
-          title: Text('Week View'),
-        ),
-        body: Column(
+      appBar: AppBar(
+        title: Text('Week View'),
+      ),
+      drawer: Drawer(
+        child: ListView(
+          padding: EdgeInsets.zero,
           children: [
-            TableCalendar(
-              firstDay: DateTime.utc(2021, 1, 1),
-              lastDay: DateTime.utc(2030, 12, 31),
-              focusedDay: _selectedDay,
-              calendarFormat: _calendarFormat,
-              startingDayOfWeek: StartingDayOfWeek.monday,
-              eventLoader: (day) => _events[day] ?? [],
-              selectedDayPredicate: (day) => isSameDay(_selectedDay, day),
-              onDaySelected: _onDaySelected,
-              onFormatChanged: (format) {
-                setState(() {
-                  _calendarFormat = format;
-                });
+            DrawerHeader(
+              decoration: BoxDecoration(
+                color: Theme.of(context).primaryColor,
+              ),
+              child: Text(
+                'Goal Tracker',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 24,
+                ),
+              ),
+            ),
+            ListTile(
+              leading: Icon(Icons.add),
+              title: Text('Add Goal'),
+              onTap: () {
+                Navigator.pop(context);
+                _navigateToAddGoal();
               },
             ),
-            Expanded(child: _buildGoalsList()),
+            Divider(),
+            ListTile(
+              leading: Icon(Icons.list),
+              title: Text('Detail List View'),
+              onTap: () {
+                Navigator.pop(context);
+                _navigateToDetailListView();
+              },
+            ),
+            ListTile(
+              leading: Icon(Icons.calendar_view_week),
+              title: Text('Week View'),
+              onTap: () {
+                Navigator.pop(context);
+                // We're already on Week View
+              },
+            ),
+            ListTile(
+              leading: Icon(Icons.calendar_today),
+              title: Text('Month View'),
+              onTap: () {
+                Navigator.pop(context);
+                _navigateToMonthView();
+              },
+            ),
+            Divider(),
+            ListTile(
+              leading: Icon(Icons.import_export),
+              title: Text('Import/Export Goals'),
+              onTap: () {
+                Navigator.pop(context);
+                // Implement import/export functionality
+              },
+            ),
+            ListTile(
+              leading: Icon(Icons.feedback),
+              title: Text('Feedback'),
+              onTap: () {
+                Navigator.pop(context);
+                _openFeedback();
+              },
+            ),
+            ListTile(
+              leading: Icon(Icons.settings),
+              title: Text('Settings'),
+              onTap: () {
+                Navigator.pop(context);
+                _navigateToSettings();
+              },
+            ),
           ],
-        ));
+        ),
+      ),
+      body: Column(
+        children: [
+          TableCalendar(
+            firstDay: DateTime.utc(2021, 1, 1),
+            lastDay: DateTime.utc(2030, 12, 31),
+            focusedDay: _focusedDay,
+            calendarFormat: _calendarFormat,
+            startingDayOfWeek: StartingDayOfWeek.monday,
+            eventLoader: (day) => _events[day] ?? [],
+            selectedDayPredicate: (day) => isSameDay(_selectedDay, day),
+            onDaySelected: _onDaySelected,
+            onFormatChanged: (format) {
+              setState(() {
+                _calendarFormat = format;
+              });
+            },
+            availableCalendarFormats: const {
+              CalendarFormat.week: 'Week',
+            },
+          ),
+          Expanded(child: _buildGoalsList()),
+        ],
+      ),
+    );
   }
 }
