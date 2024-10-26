@@ -58,7 +58,8 @@ class _GoalCreateScreenState extends State<GoalCreateScreen> {
             children: [
               TextFormField(
                 decoration: InputDecoration(labelText: 'Goal Title'),
-                validator: (value) => value!.isEmpty ? 'Please enter a title' : null,
+                validator: (value) =>
+                    value!.isEmpty ? 'Please enter a title' : null,
                 onSaved: (value) => _title = value ?? '',
               ),
               TextFormField(
@@ -66,7 +67,8 @@ class _GoalCreateScreenState extends State<GoalCreateScreen> {
                 onSaved: (value) => _description = value ?? '',
               ),
               SizedBox(height: 16),
-              Text('Select Days of the Week:', style: TextStyle(fontSize: 16)),
+              Text('Select Days of the Week:',
+                  style: TextStyle(fontSize: 16)),
               _buildDayCheckbox('Monday', 0),
               _buildDayCheckbox('Tuesday', 1),
               _buildDayCheckbox('Wednesday', 2),

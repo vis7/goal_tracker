@@ -1,3 +1,4 @@
+// lib/models/goal.dart
 class Goal {
   int? id;
   String title;
@@ -15,7 +16,8 @@ class Goal {
         id: json['id'],
         title: json['title'],
         description: json['description'],
-        daysOfWeek: (json['daysOfWeek'] as String).split(',').map((e) => e == '1').toList(),
+        daysOfWeek:
+            (json['daysOfWeek'] as String).split(',').map((e) => e == '1').toList(),
       );
 
   Map<String, dynamic> toMap() => {

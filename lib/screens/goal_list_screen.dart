@@ -30,25 +30,31 @@ class _GoalListScreenState extends State<GoalListScreen> {
     return Scaffold(
       drawer: SideBar(),
       appBar: AppBar(title: Text('Goals')),
-      body: ListView.builder(
-        itemCount: _goals.length,
-        itemBuilder: (context, index) {
-          final goal = _goals[index];
-          return ListTile(
-            title: Text(goal.title),
-            subtitle: Text(goal.description),
-            onTap: () {
-              // Navigate to goal details or edit
-            },
-          );
-        },
-      ),
+      body: _goals.isEmpty
+          ? Center(child: Text('No goals added yet.'))
+          : ListView.builder(
+              itemCount: _goals.length,
+              itemBuilder: (context, index) {
+                final goal = _goals[index];
+                return ListTile(
+                  title: Text(goal.title),
+                  subtitle: Text(goal.description),
+                  trailing: IconButton(
+                    icon: Icon(Icons.delete, color: Colors.red),
+                    onPressed: () async {
+                      await DBHelper.instance.deleteGoal(goal.id!);
+                      _fetchGoals();
+                    },
+                  ),
+                  onTap: () {
+                    // You can navigate to a goal detail or edit screen here
+                  },
+                );
+              },
+            ),
       floatingActionButton: FloatingActionButton(
         onPressed: () async {
-          await Navigator.push(
-            context,
-            MaterialPageRoute(builder: (_) => GoalCreateScreen()),
-          );
+          await Navigator.pushNamed(context, '/add_goal');
           _fetchGoals();
         },
         child: Icon(Icons.add),
