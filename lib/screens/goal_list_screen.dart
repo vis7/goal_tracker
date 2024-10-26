@@ -1,7 +1,8 @@
+// lib/screens/goal_list_screen.dart
+
 import 'package:flutter/material.dart';
 import 'package:goal_tracker/database/db_helper.dart';
 import 'package:goal_tracker/models/goal.dart';
-import 'package:goal_tracker/screens/goal_create_screen.dart';
 import 'package:goal_tracker/widgets/sidebar.dart';
 
 class GoalListScreen extends StatefulWidget {
@@ -25,6 +26,11 @@ class _GoalListScreenState extends State<GoalListScreen> {
     });
   }
 
+  void _deleteGoal(int id) async {
+    await DBHelper.instance.deleteGoal(id);
+    _fetchGoals();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -41,13 +47,10 @@ class _GoalListScreenState extends State<GoalListScreen> {
                   subtitle: Text(goal.description),
                   trailing: IconButton(
                     icon: Icon(Icons.delete, color: Colors.red),
-                    onPressed: () async {
-                      await DBHelper.instance.deleteGoal(goal.id!);
-                      _fetchGoals();
-                    },
+                    onPressed: () => _deleteGoal(goal.id!),
                   ),
                   onTap: () {
-                    // You can navigate to a goal detail or edit screen here
+                    // Optional: Navigate to a detailed view or edit screen
                   },
                 );
               },

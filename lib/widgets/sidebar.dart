@@ -1,9 +1,6 @@
+// lib/widgets/sidebar.dart
+
 import 'package:flutter/material.dart';
-import 'package:goal_tracker/screens/goal_create_screen.dart';
-import 'package:goal_tracker/screens/goal_list_screen.dart';
-import 'package:goal_tracker/screens/month_view_screen.dart';
-import 'package:goal_tracker/screens/settings_screen.dart';
-import 'package:goal_tracker/screens/week_view_screen.dart';
 
 class SideBar extends StatelessWidget {
   @override
@@ -12,42 +9,38 @@ class SideBar extends StatelessWidget {
       child: ListView(
         children: [
           DrawerHeader(
-            child: Text('Goal Tracker', style: TextStyle(fontSize: 24)),
+            child: Text('Goal Tracker',
+                style: TextStyle(color: Colors.white, fontSize: 24)),
+            decoration: BoxDecoration(
+              color: Colors.blue,
+            ),
           ),
           ListTile(
-            title: Text('Goal List'),
+            leading: Icon(Icons.list),
+            title: Text('Goals'),
             onTap: () {
-              Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(builder: (_) => GoalListScreen()),
-              );
+              Navigator.pushReplacementNamed(context, '/');
             },
           ),
           ListTile(
+            leading: Icon(Icons.view_week),
             title: Text('Week View'),
             onTap: () {
-              Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(builder: (_) => WeekViewScreen()),
-              );
+              Navigator.pushReplacementNamed(context, '/week_view');
             },
           ),
           ListTile(
+            leading: Icon(Icons.view_module),
             title: Text('Month View'),
             onTap: () {
-              Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(builder: (_) => MonthViewScreen()),
-              );
+              Navigator.pushReplacementNamed(context, '/month_view');
             },
           ),
           ListTile(
+            leading: Icon(Icons.settings),
             title: Text('Settings'),
             onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => SettingsScreen()),
-              );
+              Navigator.pushReplacementNamed(context, '/settings');
             },
           ),
         ],

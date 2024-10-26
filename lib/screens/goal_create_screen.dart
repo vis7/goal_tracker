@@ -1,3 +1,5 @@
+// lib/screens/goal_create_screen.dart
+
 import 'package:flutter/material.dart';
 import 'package:goal_tracker/database/db_helper.dart';
 import 'package:goal_tracker/models/goal.dart';
@@ -56,19 +58,25 @@ class _GoalCreateScreenState extends State<GoalCreateScreen> {
           key: _formKey,
           child: ListView(
             children: [
+              // Goal Title
               TextFormField(
                 decoration: InputDecoration(labelText: 'Goal Title'),
                 validator: (value) =>
                     value!.isEmpty ? 'Please enter a title' : null,
                 onSaved: (value) => _title = value ?? '',
               ),
+              SizedBox(height: 16),
+              // Goal Description
               TextFormField(
                 decoration: InputDecoration(labelText: 'Description'),
                 onSaved: (value) => _description = value ?? '',
               ),
               SizedBox(height: 16),
-              Text('Select Days of the Week:',
-                  style: TextStyle(fontSize: 16)),
+              // Days of the Week
+              Text(
+                'Select Days of the Week:',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              ),
               _buildDayCheckbox('Monday', 0),
               _buildDayCheckbox('Tuesday', 1),
               _buildDayCheckbox('Wednesday', 2),

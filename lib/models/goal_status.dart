@@ -1,4 +1,7 @@
 // lib/models/goal_status.dart
+
+import 'package:intl/intl.dart';
+
 class GoalStatus {
   int? id;
   int goalId;
@@ -15,14 +18,14 @@ class GoalStatus {
   factory GoalStatus.fromMap(Map<String, dynamic> json) => GoalStatus(
         id: json['id'],
         goalId: json['goalId'],
-        date: DateTime.parse(json['date']),
+        date: DateFormat('yyyy-MM-dd').parse(json['date']),
         isDone: json['isDone'] == 1,
       );
 
   Map<String, dynamic> toMap() => {
         'id': id,
         'goalId': goalId,
-        'date': date.toIso8601String(),
+        'date': DateFormat('yyyy-MM-dd').format(date),
         'isDone': isDone ? 1 : 0,
       };
 }

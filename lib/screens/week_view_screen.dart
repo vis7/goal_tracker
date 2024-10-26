@@ -1,4 +1,5 @@
 // lib/screens/week_view_screen.dart
+
 import 'package:flutter/material.dart';
 import 'package:goal_tracker/database/db_helper.dart';
 import 'package:goal_tracker/models/goal.dart';
@@ -35,26 +36,30 @@ class _WeekViewScreenState extends State<WeekViewScreen> {
   }
 
   Future<void> _toggleGoalStatus(Goal goal, DateTime date) async {
-    if (date.isAfter(DateTime.now())) {
-      // Cannot mark future dates
+    DateTime normalizedDate = DateTime(date.year, date.month, date.day);
+
+    if (normalizedDate.isAfter(DateTime.now())) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text("Cannot mark future dates")),
       );
       return;
     }
 
-    GoalStatus? status = await DBHelper.instance.getGoalStatus(goal.id!, date);
+    GoalStatus? status =
+        await DBHelper.instance.getGoalStatus(goal.id!, normalizedDate);
     if (status == null) {
-      // Insert new status as done
       await DBHelper.instance.insertGoalStatus(GoalStatus(
         goalId: goal.id!,
-        date: date,
+        date: normalizedDate,
         isDone: true,
       ));
     } else {
-      // Toggle status
-      status.isDone = !status.isDone;
-      await DBHelper.instance.updateGoalStatus(status);
+      if (status.isDone == true) {
+        status.isDone = false;
+        await DBHelper.instance.updateGoalStatus(status);
+      } else if (status.isDone == false) {
+        await DBHelper.instance.deleteGoalStatus(status.id!);
+      }
     }
     setState(() {});
   }
@@ -68,53 +73,104 @@ class _WeekViewScreenState extends State<WeekViewScreen> {
       ),
       builder: (context, snapshot) {
         List<GoalStatus> statuses = snapshot.data ?? [];
-        Map<String, bool> statusMap = {
+        Map<String, GoalStatus> statusMap = {
           for (var status in statuses)
-            DateFormat('yyyy-MM-dd').format(status.date): status.isDone
+            DateFormat('yyyy-MM-dd').format(status.date): status
         };
-        return Row(
-          children: [
-            Expanded(child: Text(goal.title)),
-            ...List.generate(7, (index) {
-              DateTime date = _currentWeekStart.add(Duration(days: index));
-              bool isToday = DateTime.now().difference(date).inDays == 0 &&
-                  DateTime.now().day == date.day;
-              bool isFuture = date.isAfter(DateTime.now());
-              String dateKey = DateFormat('yyyy-MM-dd').format(date);
-              bool isDone = statusMap[dateKey] ?? false;
-              bool isGoalDay = goal.daysOfWeek[index];
 
-              return Expanded(
-                child: GestureDetector(
-                  onTap: isGoalDay
-                      ? () => _toggleGoalStatus(goal, date)
-                      : null,
-                  child: Container(
-                    margin: EdgeInsets.all(4),
-                    decoration: BoxDecoration(
-                      color: isDone ? Colors.green : Colors.grey[200],
-                      border: Border.all(
-                        color: isToday ? Colors.blue : Colors.grey,
-                        width: isToday ? 2 : 1,
-                      ),
-                    ),
-                    height: 50,
-                    child: Center(
-                      child: Text(
-                        DateFormat('E').format(date),
-                        style: TextStyle(
-                          color: isFuture
-                              ? Colors.grey
-                              : isDone
-                                  ? Colors.white
-                                  : Colors.black,
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8.0),
+              child: Text(
+                goal.title,
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              ),
+            ),
+            Row(
+              children: List.generate(7, (index) {
+                DateTime date = _currentWeekStart.add(Duration(days: index));
+                String dateKey = DateFormat('yyyy-MM-dd').format(date);
+                bool isToday = DateTime.now().difference(date).inDays == 0 &&
+                    DateTime.now().day == date.day &&
+                    DateTime.now().month == date.month &&
+                    DateTime.now().year == date.year;
+                bool isFuture = date.isAfter(DateTime.now());
+                GoalStatus? status = statusMap[dateKey];
+                bool? isDone = status?.isDone;
+                bool isGoalDay = goal.daysOfWeek[index];
+
+                Color bgColor;
+                Widget content;
+
+                if (isGoalDay) {
+                  if (isDone == true) {
+                    bgColor = Colors.green;
+                    content = Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          DateFormat('EEE\nd').format(date),
+                          style: TextStyle(color: Colors.white, fontSize: 12),
+                          textAlign: TextAlign.center,
                         ),
+                        Icon(Icons.check, color: Colors.white, size: 16),
+                      ],
+                    );
+                  } else if (isDone == false) {
+                    bgColor = Colors.red;
+                    content = Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          DateFormat('EEE\nd').format(date),
+                          style: TextStyle(color: Colors.white, fontSize: 12),
+                          textAlign: TextAlign.center,
+                        ),
+                        Icon(Icons.close, color: Colors.white, size: 16),
+                      ],
+                    );
+                  } else {
+                    bgColor = Colors.grey[200]!;
+                    content = Text(
+                      DateFormat('EEE\nd').format(date),
+                      style: TextStyle(color: Colors.black, fontSize: 12),
+                      textAlign: TextAlign.center,
+                    );
+                  }
+                } else {
+                  bgColor = Colors.grey[300]!;
+                  content = Text(
+                    DateFormat('EEE\nd').format(date),
+                    style: TextStyle(color: Colors.grey, fontSize: 12),
+                    textAlign: TextAlign.center,
+                  );
+                }
+
+                return Expanded(
+                  child: GestureDetector(
+                    onTap: isGoalDay && !isFuture
+                        ? () => _toggleGoalStatus(goal, date)
+                        : null,
+                    child: Container(
+                      margin: EdgeInsets.all(2),
+                      decoration: BoxDecoration(
+                        color: bgColor,
+                        border: Border.all(
+                          color: isToday ? Colors.blue : Colors.grey,
+                          width: isToday ? 2 : 1,
+                        ),
+                        borderRadius: BorderRadius.circular(4),
                       ),
+                      height: 80,
+                      child: Center(child: content),
                     ),
                   ),
-                ),
-              );
-            }),
+                );
+              }),
+            ),
+            Divider(),
           ],
         );
       },
@@ -153,19 +209,20 @@ class _WeekViewScreenState extends State<WeekViewScreen> {
           ),
           Divider(),
           Expanded(
-            child: ListView.builder(
-              itemCount: _goals.length,
-              itemBuilder: (context, index) {
-                return _buildGoalRow(_goals[index]);
-              },
-            ),
+            child: _goals.isEmpty
+                ? Center(child: Text('No goals available'))
+                : ListView.builder(
+                    itemCount: _goals.length,
+                    itemBuilder: (context, index) {
+                      return _buildGoalRow(_goals[index]);
+                    },
+                  ),
           ),
         ],
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () {
-          // Navigate to add goal screen
-          Navigator.pushNamed(context, '/add_goal');
+          Navigator.pushNamed(context, '/add_goal').then((_) => _fetchGoals());
         },
         child: Icon(Icons.add),
       ),

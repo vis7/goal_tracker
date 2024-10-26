@@ -1,4 +1,5 @@
 // lib/models/goal.dart
+
 class Goal {
   int? id;
   String title;
