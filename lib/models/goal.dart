@@ -1,27 +1,27 @@
 class Goal {
-  final int? id;
-  final String title;
-  final String description;
-  final List<int> daysOfWeek;
-  final Map<DateTime, bool> progress;
+  int? id;
+  String title;
+  String description;
+  List<bool> daysOfWeek; // [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
 
   Goal({
     this.id,
     required this.title,
     required this.description,
     required this.daysOfWeek,
-    required this.progress,
   });
 
-  Map<String, dynamic> toMap() {
-    return {
-      'id': id,
-      'title': title,
-      'description': description,
-      'daysOfWeek': daysOfWeek.join(','),
-      'progress': progress.entries.map((e) => '${e.key.toIso8601String()}:${e.value}').join(','),
-    };
-  }
+  factory Goal.fromMap(Map<String, dynamic> json) => Goal(
+        id: json['id'],
+        title: json['title'],
+        description: json['description'],
+        daysOfWeek: (json['daysOfWeek'] as String).split(',').map((e) => e == '1').toList(),
+      );
 
-  // From Map function to be implemented
+  Map<String, dynamic> toMap() => {
+        'id': id,
+        'title': title,
+        'description': description,
+        'daysOfWeek': daysOfWeek.map((e) => e ? '1' : '0').join(','),
+      };
 }

@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:goal_tracker/database/db_helper.dart';
 import 'package:goal_tracker/models/goal.dart';
-import 'package:goal_tracker/models/goal_provider.dart';
+import 'package:goal_tracker/screens/goal_create_screen.dart';
 import 'package:goal_tracker/widgets/sidebar.dart';
-import 'package:goal_tracker/widgets/goal_tile.dart';
-import 'package:goal_tracker/screens/new_goal_screen.dart';
 
 class GoalListScreen extends StatefulWidget {
   @override
@@ -16,35 +15,43 @@ class _GoalListScreenState extends State<GoalListScreen> {
   @override
   void initState() {
     super.initState();
-    _loadGoals();
+    _fetchGoals();
   }
 
-  Future<void> _loadGoals() async {
-    _goals = await GoalProvider.instance.fetchGoals();
-    setState(() {});
+  void _fetchGoals() async {
+    final goals = await DBHelper.instance.getGoals();
+    setState(() {
+      _goals = goals;
+    });
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text('Goals'),
-      ),
-      drawer: Sidebar(),
+      drawer: SideBar(),
+      appBar: AppBar(title: Text('Goals')),
       body: ListView.builder(
         itemCount: _goals.length,
         itemBuilder: (context, index) {
-          return GoalTile(goal: _goals[index]); // Pass the `Goal` object
+          final goal = _goals[index];
+          return ListTile(
+            title: Text(goal.title),
+            subtitle: Text(goal.description),
+            onTap: () {
+              // Navigate to goal details or edit
+            },
+          );
         },
       ),
       floatingActionButton: FloatingActionButton(
-        child: Icon(Icons.add),
-        onPressed: () {
-          Navigator.push(
+        onPressed: () async {
+          await Navigator.push(
             context,
-            MaterialPageRoute(builder: (_) => NewGoalScreen()),
-          ).then((value) => _loadGoals()); // Refresh the list after adding a goal
+            MaterialPageRoute(builder: (_) => GoalCreateScreen()),
+          );
+          _fetchGoals();
         },
+        child: Icon(Icons.add),
       ),
     );
   }

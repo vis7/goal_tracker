@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:table_calendar/table_calendar.dart';
 import 'package:goal_tracker/models/goal.dart';
-import 'package:goal_tracker/models/goal_provider.dart';
-import 'package:goal_tracker/widgets/calendar_tile.dart';
+import 'package:goal_tracker/widgets/sidebar.dart';
 
 class WeekViewScreen extends StatefulWidget {
   @override
@@ -10,81 +8,47 @@ class WeekViewScreen extends StatefulWidget {
 }
 
 class _WeekViewScreenState extends State<WeekViewScreen> {
-  DateTime _focusedDay = DateTime.now();
+  // Sample data, replace with actual data from DB
   List<Goal> _goals = [];
 
   @override
   void initState() {
     super.initState();
-    _loadGoals();
+    // Fetch goals and their statuses for the week
   }
 
-  Future<void> _loadGoals() async {
-    _goals = await GoalProvider.instance.fetchGoals();
-    setState(() {});
-  }
-
-  bool _isCurrentDay(DateTime day) {
-    return day.year == DateTime.now().year && day.month == DateTime.now().month && day.day == DateTime.now().day;
+  Widget _buildGoalRow(Goal goal) {
+    return Row(
+      children: [
+        Expanded(child: Text(goal.title)),
+        // Build day cells with checkboxes or indicators
+      ],
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text('Week View'),
-      ),
+      drawer: SideBar(),
+      appBar: AppBar(title: Text('Week View')),
       body: Column(
         children: [
-          TableCalendar(
-            firstDay: DateTime.utc(2000, 1, 1),
-            lastDay: DateTime.utc(2100, 12, 31),
-            focusedDay: _focusedDay,
-            calendarFormat: CalendarFormat.week,
-            headerVisible: false,
-            selectedDayPredicate: (day) {
-              return _isCurrentDay(day);
-            },
-            onDaySelected: (selectedDay, focusedDay) {
-              if (!_isCurrentDay(selectedDay)) return;
-              setState(() {
-                _focusedDay = focusedDay;
-              });
-            },
-            calendarBuilders: CalendarBuilders(
-              defaultBuilder: (context, day, focusedDay) {
-                return CalendarTile(
-                  date: day,
-                  isDone: false, // Placeholder; real status would be fetched from `_goals`
-                  isCurrentDay: _isCurrentDay(day),
-                  onMarkChanged: (isChecked) {
-                    // Update goal progress here
-                  },
-                );
-              },
-            ),
-          ),
+          // Build week calendar header
           Expanded(
             child: ListView.builder(
               itemCount: _goals.length,
               itemBuilder: (context, index) {
-                return ListTile(
-                  title: Text(_goals[index].title),
-                  subtitle: Text('Progress: ${_goals[index].progress[_focusedDay] ?? false}'),
-                  trailing: Checkbox(
-                    value: _goals[index].progress[_focusedDay] ?? false,
-                    onChanged: (isChecked) {
-                      setState(() {
-                        _goals[index].progress[_focusedDay] = isChecked ?? false;
-                        GoalProvider.instance.updateGoalProgress(_goals[index].id!, _focusedDay, isChecked ?? false);
-                      });
-                    },
-                  ),
-                );
+                return _buildGoalRow(_goals[index]);
               },
             ),
           ),
         ],
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () {
+          // Navigate to add goal screen
+        },
+        child: Icon(Icons.add),
       ),
     );
   }
