@@ -13,19 +13,29 @@ class MonthViewScreen extends StatefulWidget {
 
 class _MonthViewScreenState extends State<MonthViewScreen> {
   List<Goal> _goals = [];
+  Map<int, Map<DateTime, int>> _goalAchievements = {};
   int _currentGoalIndex = 0;
   DateTime _currentMonth = DateTime.now();
 
   @override
   void initState() {
     super.initState();
-    _fetchGoals();
+    _fetchGoalsAndAchievements();
   }
 
-  Future<void> _fetchGoals() async {
+  Future<void> _fetchGoalsAndAchievements() async {
     final goals = await DBHelper.instance.getGoals();
+    Map<int, Map<DateTime, int>> achievements = {};
+
+    for (Goal goal in goals) {
+      Map<DateTime, int> goalAchievements =
+          await DBHelper.instance.getAchievementsForGoal(goal.id!);
+      achievements[goal.id!] = goalAchievements;
+    }
+
     setState(() {
       _goals = goals;
+      _goalAchievements = achievements;
     });
   }
 
@@ -53,25 +63,37 @@ class _MonthViewScreenState extends State<MonthViewScreen> {
       return;
     }
 
-    bool isMarked =
-        await DBHelper.instance.isAchievementMarked(goal.id!, normalizedDate);
+    int? currentStatus = _goalAchievements[goal.id!]?[normalizedDate];
+    int? newStatus;
 
-    if (isMarked) {
-      await DBHelper.instance.unmarkAchievement(goal.id!, normalizedDate);
+    if (currentStatus == null) {
+      newStatus = 1; // From blank to done
+    } else if (currentStatus == 1) {
+      newStatus = 0; // From done to not done
+    } else if (currentStatus == 0) {
+      newStatus = null; // From not done to blank
+    }
+
+    await DBHelper.instance
+        .setAchievementStatus(goal.id!, normalizedDate, newStatus);
+
+    if (newStatus == null) {
+      _goalAchievements[goal.id!]?.remove(normalizedDate);
     } else {
-      await DBHelper.instance.markAchievement(goal.id!, normalizedDate);
+      _goalAchievements[goal.id!]?[normalizedDate] = newStatus;
     }
 
     setState(() {});
   }
 
   Widget _buildCalendar(Goal goal) {
-    // Define goalStartDate here
     DateTime goalStartDate = DateTime(
       goal.startDate.year,
       goal.startDate.month,
       goal.startDate.day,
     );
+
+    Map<DateTime, int> achievements = _goalAchievements[goal.id!] ?? {};
 
     int daysInMonth =
         DateTime(_currentMonth.year, _currentMonth.month + 1, 0).day;
@@ -79,7 +101,24 @@ class _MonthViewScreenState extends State<MonthViewScreen> {
         DateTime(_currentMonth.year, _currentMonth.month, 1);
     int startingWeekday = firstDayOfMonth.weekday;
 
-    List<Widget> dayWidgets = [];
+    DateTime today = DateTime.now();
+    DateTime normalizedToday = DateTime(today.year, today.month, today.day);
+    DateTime endDate = normalizedToday;
+    DateTime date = goalStartDate;
+    int totalPossibleDays = 0;
+
+    while (date.isBefore(endDate.add(Duration(days: 1)))) {
+      totalPossibleDays++;
+      date = date.add(Duration(days: 1));
+    }
+
+    int totalAchievedDays = achievements.entries
+        .where((entry) =>
+            !entry.key.isAfter(normalizedToday) &&
+            !entry.key.isBefore(goalStartDate) &&
+            entry.value == 1) // Count only 'done' statuses
+        .length;
+
     List<Widget> weekdayHeaders = List.generate(7, (index) {
       return Expanded(
         child: Center(
@@ -91,133 +130,118 @@ class _MonthViewScreenState extends State<MonthViewScreen> {
       );
     });
 
-    dayWidgets.add(Row(children: weekdayHeaders));
-
+    List<Widget> calendarRows = [];
+    int dayCounter = 1;
     int totalCells = ((startingWeekday - 1) + daysInMonth);
     int numRows = (totalCells / 7).ceil();
 
-    return FutureBuilder<List<DateTime>>(
-      future: DBHelper.instance.getAchievementsForGoal(goal.id!),
-      builder: (context, snapshot) {
-        List<DateTime> achievements = snapshot.data ?? [];
+    calendarRows.add(Row(children: weekdayHeaders));
 
-        // Calculate total possible days and total achieved days
-        DateTime today = DateTime.now();
-        DateTime normalizedToday =
-            DateTime(today.year, today.month, today.day);
-        DateTime endDate = normalizedToday;
-        DateTime date = goalStartDate;
-        int totalPossibleDays = 0;
+    for (int row = 0; row < numRows; row++) {
+      List<Widget> weekCells = [];
+      for (int col = 0; col < 7; col++) {
+        if (row == 0 && col < startingWeekday - 1) {
+          weekCells.add(Expanded(child: Container()));
+        } else if (dayCounter > daysInMonth) {
+          weekCells.add(Expanded(child: Container()));
+        } else {
+          DateTime date = DateTime(
+              _currentMonth.year, _currentMonth.month, dayCounter);
+          DateTime normalizedDate =
+              DateTime(date.year, date.month, date.day);
+          bool isToday = normalizedDate == normalizedToday;
+          bool isFuture = normalizedDate.isAfter(normalizedToday);
+          bool isBeforeStartDate = normalizedDate.isBefore(goalStartDate);
+          int? status = achievements[normalizedDate];
 
-        while (date.isBefore(endDate.add(Duration(days: 1)))) {
-          totalPossibleDays++;
-          date = date.add(Duration(days: 1));
-        }
+          bool isGoalDay = true;
 
-        int totalAchievedDays = achievements
-            .where((achievementDate) =>
-                !achievementDate.isAfter(normalizedToday) &&
-                !achievementDate.isBefore(goalStartDate))
-            .length;
+          Color bgColor;
+          Widget content;
 
-        List<Widget> calendarRows = [];
-        int dayCounter = 1;
-
-        for (int row = 0; row < numRows; row++) {
-          List<Widget> weekCells = [];
-          for (int col = 0; col < 7; col++) {
-            if (row == 0 && col < startingWeekday - 1) {
-              weekCells.add(Expanded(child: Container()));
-            } else if (dayCounter > daysInMonth) {
-              weekCells.add(Expanded(child: Container()));
-            } else {
-              DateTime date = DateTime(
-                  _currentMonth.year, _currentMonth.month, dayCounter);
-              DateTime normalizedDate =
-                  DateTime(date.year, date.month, date.day);
-              bool isToday = normalizedDate == normalizedToday;
-              bool isFuture = normalizedDate.isAfter(normalizedToday);
-              bool isBeforeStartDate =
-                  normalizedDate.isBefore(goalStartDate);
-              bool isMarked = achievements.any((achievementDate) =>
-                  achievementDate == normalizedDate);
-
-              // All days are goal days now
-              bool isGoalDay = true;
-
-              Color bgColor;
-              Widget content;
-
-              if (isGoalDay) {
-                if (isMarked) {
-                  bgColor = Colors.green;
-                  content = Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        '$dayCounter',
-                        style: TextStyle(color: Colors.white),
-                      ),
-                      Icon(Icons.check, color: Colors.white, size: 16),
-                    ],
-                  );
-                } else {
-                  bgColor = Colors.grey[200]!;
-                  content = Text(
+          if (isGoalDay) {
+            if (status == 1) {
+              // Done
+              bgColor = Colors.green;
+              content = Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
                     '$dayCounter',
-                    style: TextStyle(color: Colors.black),
-                  );
-                }
-              } else {
-                bgColor = Colors.grey[300]!;
-                content = Text(
-                  '$dayCounter',
-                  style: TextStyle(color: Colors.grey),
-                );
-              }
-
-              weekCells.add(
-                Expanded(
-                  child: GestureDetector(
-                    onTap: !isFuture && !isBeforeStartDate
-                        ? () => _toggleGoalStatus(goal, date)
-                        : null,
-                    child: Container(
-                      margin: EdgeInsets.all(2),
-                      decoration: BoxDecoration(
-                        color: bgColor,
-                        border: Border.all(
-                          color: isToday ? Colors.blue : Colors.grey,
-                          width: isToday ? 2 : 1,
-                        ),
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      height: 60,
-                      child: Center(child: content),
-                    ),
+                    style: TextStyle(color: Colors.white),
                   ),
-                ),
+                  Icon(Icons.check, color: Colors.white, size: 16),
+                ],
               );
-              dayCounter++;
+            } else if (status == 0) {
+              // Not Done
+              bgColor = Colors.red;
+              content = Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    '$dayCounter',
+                    style: TextStyle(color: Colors.white),
+                  ),
+                  Icon(Icons.close, color: Colors.white, size: 16),
+                ],
+              );
+            } else {
+              // Blank
+              bgColor = Colors.grey[200]!;
+              content = Text(
+                '$dayCounter',
+                style: TextStyle(color: Colors.black),
+              );
             }
+          } else {
+            bgColor = Colors.grey[300]!;
+            content = Text(
+              '$dayCounter',
+              style: TextStyle(color: Colors.grey),
+            );
           }
-          calendarRows.add(Row(children: weekCells));
-        }
 
-        return Column(
-          children: [
-            // Achievement Count Display
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 8.0),
-              child: Text(
-                '${goal.title}: $totalAchievedDays/$totalPossibleDays',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+          weekCells.add(
+            Expanded(
+              child: GestureDetector(
+                onTap: !isFuture && !isBeforeStartDate
+                    ? () => _toggleGoalStatus(goal, date)
+                    : null,
+                child: Container(
+                  margin: EdgeInsets.all(2),
+                  decoration: BoxDecoration(
+                    color: bgColor,
+                    border: Border.all(
+                      color: isToday ? Colors.blue : Colors.grey,
+                      width: isToday ? 2 : 1,
+                    ),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  height: 60,
+                  child: Center(child: content),
+                ),
               ),
             ),
-            Column(children: calendarRows),
-          ],
-        );
-      },
+          );
+          dayCounter++;
+        }
+      }
+      calendarRows.add(Row(children: weekCells));
+    }
+
+    return Column(
+      children: [
+        // Achievement Count Display
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 8.0),
+          child: Text(
+            '${goal.title}: $totalAchievedDays/$totalPossibleDays',
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+          ),
+        ),
+        Column(children: calendarRows),
+      ],
     );
   }
 
@@ -304,7 +328,8 @@ class _MonthViewScreenState extends State<MonthViewScreen> {
       floatingActionButton: FloatingActionButton(
         onPressed: () {
           // Navigate to add goal screen
-          Navigator.pushNamed(context, '/add_goal').then((_) => _fetchGoals());
+          Navigator.pushNamed(context, '/add_goal')
+              .then((_) => _fetchGoalsAndAchievements());
         },
         child: Icon(Icons.add),
       ),
