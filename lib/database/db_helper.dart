@@ -2,8 +2,8 @@
 
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
-import 'package:goal_tracker/models/goal.dart';
-import 'package:goal_tracker/models/goal_status.dart';
+import '../models/goal.dart';
+import '../models/goal_status.dart';
 import 'package:intl/intl.dart';
 
 class DBHelper {
@@ -17,7 +17,7 @@ class DBHelper {
     String path = join(await getDatabasesPath(), 'goals.db');
     return await openDatabase(
       path,
-      version: 3,
+      version: 4, // Incremented to handle schema changes
       onCreate: _createDB,
       onUpgrade: _onUpgrade,
     );
@@ -29,7 +29,12 @@ class DBHelper {
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         title TEXT NOT NULL,
         description TEXT,
-        daysOfWeek TEXT
+        daysOfWeek TEXT,
+        startDate TEXT NOT NULL,
+        endDate TEXT,
+        eventCount INTEGER,
+        time TEXT,
+        reminderMinutes INTEGER
       )
     ''');
 
@@ -45,18 +50,17 @@ class DBHelper {
   }
 
   void _onUpgrade(Database db, int oldVersion, int newVersion) async {
-    if (oldVersion < 2) {
-      await db.execute('''
-        CREATE TABLE goal_statuses (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          goalId INTEGER NOT NULL,
-          date TEXT NOT NULL,
-          isDone INTEGER NOT NULL,
-          FOREIGN KEY (goalId) REFERENCES goals (id) ON DELETE CASCADE
-        )
-      ''');
+    if (oldVersion < 4) {
+      await db.execute('ALTER TABLE goals ADD COLUMN startDate TEXT');
+      await db.execute('ALTER TABLE goals ADD COLUMN endDate TEXT');
+      await db.execute('ALTER TABLE goals ADD COLUMN eventCount INTEGER');
+      await db.execute('ALTER TABLE goals ADD COLUMN time TEXT');
+      await db.execute('ALTER TABLE goals ADD COLUMN reminderMinutes INTEGER');
     }
+    // Handle future upgrades here
   }
+
+  // Goal CRUD methods...
 
   Future<int> insertGoal(Goal goal) async {
     final db = await database;
@@ -88,6 +92,8 @@ class DBHelper {
     );
   }
 
+
+  // GoalStatus CRUD methods...
   Future<int> insertGoalStatus(GoalStatus status) async {
     final db = await database;
     return await db.insert(

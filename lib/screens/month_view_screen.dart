@@ -59,9 +59,59 @@ class _MonthViewScreenState extends State<MonthViewScreen> {
     setState(() {});
   }
 
+  void _showAchievementDialog(Goal goal) async {
+    int totalPossibleDays = 0;
+    int totalAchievedDays = 0;
+
+    DateTime endDate = goal.endDate ?? DateTime.now();
+    DateTime date = goal.startDate;
+    int eventsLeft = goal.eventCount ?? -1;
+
+    while (date.isBefore(endDate.add(Duration(days: 1)))) {
+      int weekdayIndex = date.weekday - 1;
+      bool isGoalDay = goal.daysOfWeek[weekdayIndex];
+
+      if (isGoalDay || eventsLeft == 0) {
+        totalPossibleDays++;
+      }
+
+      GoalStatus? status =
+          await DBHelper.instance.getGoalStatus(goal.id!, date);
+      if (status != null && status.isDone == true) {
+        totalAchievedDays++;
+      }
+
+      if (eventsLeft > 0) {
+        eventsLeft--;
+        if (eventsLeft == 0) break;
+      }
+
+      date = date.add(Duration(days: 1));
+    }
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Text('Achievement'),
+          content: Text('You have achieved $totalAchievedDays out of '
+              '$totalPossibleDays days.'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text('OK'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   Widget _buildCalendar(Goal goal) {
-    int daysInMonth = DateTime(_currentMonth.year, _currentMonth.month + 1, 0).day;
-    DateTime firstDayOfMonth = DateTime(_currentMonth.year, _currentMonth.month, 1);
+    int daysInMonth =
+        DateTime(_currentMonth.year, _currentMonth.month + 1, 0).day;
+    DateTime firstDayOfMonth =
+        DateTime(_currentMonth.year, _currentMonth.month, 1);
     int startingWeekday = firstDayOfMonth.weekday;
 
     List<Widget> dayWidgets = [];
@@ -109,7 +159,8 @@ class _MonthViewScreenState extends State<MonthViewScreen> {
             } else if (dayCounter > daysInMonth) {
               weekCells.add(Expanded(child: Container()));
             } else {
-              DateTime date = DateTime(_currentMonth.year, _currentMonth.month, dayCounter);
+              DateTime date = DateTime(
+                  _currentMonth.year, _currentMonth.month, dayCounter);
               String dateKey = DateFormat('yyyy-MM-dd').format(date);
               bool isToday = DateTime.now().difference(date).inDays == 0 &&
                   DateTime.now().day == date.day &&
@@ -231,6 +282,7 @@ class _MonthViewScreenState extends State<MonthViewScreen> {
       body: SingleChildScrollView(
         child: Column(
           children: [
+            // Goal Title and Navigation
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -238,9 +290,17 @@ class _MonthViewScreenState extends State<MonthViewScreen> {
                   onPressed: () => _changeGoal(-1),
                   icon: Icon(Icons.arrow_left),
                 ),
-                Text(
-                  currentGoal.title,
-                  style: TextStyle(fontSize: 18),
+                Row(
+                  children: [
+                    Text(
+                      currentGoal.title,
+                      style: TextStyle(fontSize: 18),
+                    ),
+                    IconButton(
+                      icon: Icon(Icons.info),
+                      onPressed: () => _showAchievementDialog(currentGoal),
+                    ),
+                  ],
                 ),
                 IconButton(
                   onPressed: () => _changeGoal(1),
@@ -249,6 +309,7 @@ class _MonthViewScreenState extends State<MonthViewScreen> {
               ],
             ),
             Divider(),
+            // Month Navigation
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -267,6 +328,7 @@ class _MonthViewScreenState extends State<MonthViewScreen> {
               ],
             ),
             Divider(),
+            // Calendar Grid
             Container(
               padding: EdgeInsets.symmetric(horizontal: 8),
               child: _buildCalendar(currentGoal),
@@ -276,6 +338,7 @@ class _MonthViewScreenState extends State<MonthViewScreen> {
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () {
+          // Navigate to add goal screen
           Navigator.pushNamed(context, '/add_goal');
         },
         child: Icon(Icons.add),

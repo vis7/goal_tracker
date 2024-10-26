@@ -64,6 +64,54 @@ class _WeekViewScreenState extends State<WeekViewScreen> {
     setState(() {});
   }
 
+  void _showAchievementDialog(Goal goal) async {
+    int totalPossibleDays = 0;
+    int totalAchievedDays = 0;
+
+    DateTime endDate = goal.endDate ?? DateTime.now();
+    DateTime date = goal.startDate;
+    int eventsLeft = goal.eventCount ?? -1;
+
+    while (date.isBefore(endDate.add(Duration(days: 1)))) {
+      int weekdayIndex = date.weekday - 1;
+      bool isGoalDay = goal.daysOfWeek[weekdayIndex];
+
+      if (isGoalDay || eventsLeft == 0) {
+        totalPossibleDays++;
+      }
+
+      GoalStatus? status =
+          await DBHelper.instance.getGoalStatus(goal.id!, date);
+      if (status != null && status.isDone == true) {
+        totalAchievedDays++;
+      }
+
+      if (eventsLeft > 0) {
+        eventsLeft--;
+        if (eventsLeft == 0) break;
+      }
+
+      date = date.add(Duration(days: 1));
+    }
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Text('Achievement'),
+          content: Text('You have achieved $totalAchievedDays out of '
+              '$totalPossibleDays days.'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text('OK'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   Widget _buildGoalRow(Goal goal) {
     return FutureBuilder<List<GoalStatus>>(
       future: DBHelper.instance.getGoalStatuses(
@@ -81,13 +129,24 @@ class _WeekViewScreenState extends State<WeekViewScreen> {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // Goal Title with Achievement Info
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 8.0),
-              child: Text(
-                goal.title,
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    goal.title,
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  ),
+                  IconButton(
+                    icon: Icon(Icons.info),
+                    onPressed: () => _showAchievementDialog(goal),
+                  ),
+                ],
               ),
             ),
+            // Days Row
             Row(
               children: List.generate(7, (index) {
                 DateTime date = _currentWeekStart.add(Duration(days: index));
@@ -190,6 +249,7 @@ class _WeekViewScreenState extends State<WeekViewScreen> {
       appBar: AppBar(title: Text('Week View')),
       body: Column(
         children: [
+          // Week Navigation
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -208,6 +268,7 @@ class _WeekViewScreenState extends State<WeekViewScreen> {
             ],
           ),
           Divider(),
+          // Goals List
           Expanded(
             child: _goals.isEmpty
                 ? Center(child: Text('No goals available'))
@@ -222,6 +283,7 @@ class _WeekViewScreenState extends State<WeekViewScreen> {
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () {
+          // Navigate to add goal screen
           Navigator.pushNamed(context, '/add_goal').then((_) => _fetchGoals());
         },
         child: Icon(Icons.add),
