@@ -1,23 +1,29 @@
+// lib/widgets/goal_tile.dart
+
 import 'package:flutter/material.dart';
 import 'package:goal_tracker/models/goal.dart';
-import 'package:goal_tracker/screens/goal_detail_screen.dart';
 
 class GoalTile extends StatelessWidget {
   final Goal goal;
+  final VoidCallback onDelete;
+  final VoidCallback onTap;
 
-  GoalTile({required this.goal});
+  GoalTile({
+    required this.goal,
+    required this.onDelete,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
     return ListTile(
-      title: Text(goal.title, style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-      subtitle: Text(goal.description),
-      onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (context) => GoalDetailScreen(goal: goal)),
-        );
-      },
+      title: Text(goal.title),
+      subtitle: Text(goal.description ?? ''), // Handle null description
+      trailing: IconButton(
+        icon: Icon(Icons.delete, color: Colors.red),
+        onPressed: onDelete,
+      ),
+      onTap: onTap,
     );
   }
 }

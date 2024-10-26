@@ -1,81 +1,114 @@
+// lib/screens/settings_screen.dart
+
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:provider/provider.dart';
+import '../utils/theme_provider.dart';
+import '../widgets/sidebar.dart';
+import 'package:file_picker/file_picker.dart';
+import 'dart:io';
+import '../database/db_helper.dart';
 
-class SettingsScreen extends StatefulWidget {
-  @override
-  _SettingsScreenState createState() => _SettingsScreenState();
-}
+class SettingsScreen extends StatelessWidget {
+  Future<void> _exportData(BuildContext context) async {
+    try {
+      String jsonData = await DBHelper.instance.exportData();
 
-class _SettingsScreenState extends State<SettingsScreen> {
-  String _themePreference = 'System Default';
+      // Let the user pick a location to save the file
+      String? outputFile = await FilePicker.platform.saveFile(
+        dialogTitle: 'Save exported data as',
+        fileName: 'goals_backup.json',
+      );
 
-  @override
-  void initState() {
-    super.initState();
-    _loadThemePreference();
+      if (outputFile != null) {
+        final file = File(outputFile);
+        await file.writeAsString(jsonData);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Data exported successfully')),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error exporting data: $e')),
+      );
+    }
   }
 
-  _loadThemePreference() async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    setState(() {
-      _themePreference = prefs.getString('theme') ?? 'System Default';
-    });
-  }
+  Future<void> _importData(BuildContext context) async {
+    try {
+      // Let the user pick the file to import
+      FilePickerResult? result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['json'],
+      );
 
-  _setThemePreference(String preference) async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    await prefs.setString('theme', preference);
-    setState(() {
-      _themePreference = preference;
-    });
+      if (result != null && result.files.single.path != null) {
+        String filePath = result.files.single.path!;
+        final file = File(filePath);
+        String jsonData = await file.readAsString();
+
+        await DBHelper.instance.importData(jsonData);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Data imported successfully')),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error importing data: $e')),
+      );
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    final themeProvider = Provider.of<ThemeProvider>(context);
+
     return Scaffold(
       appBar: AppBar(
         title: Text('Settings'),
       ),
-      body: Padding(
-        padding: EdgeInsets.all(16.0),
-        child: Column(
-          children: [
-            Text(
-              'Theme',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+      drawer: SideBar(), // Include the drawer to have the menu icon
+      body: ListView(
+        children: [
+          ListTile(
+            title: Text('Theme'),
+            subtitle: Text('Select your preferred theme'),
+            trailing: DropdownButton<ThemeMode>(
+              value: themeProvider.getThemeMode,
+              items: [
+                DropdownMenuItem(
+                  child: Text('System Default'),
+                  value: ThemeMode.system,
+                ),
+                DropdownMenuItem(
+                  child: Text('Light'),
+                  value: ThemeMode.light,
+                ),
+                DropdownMenuItem(
+                  child: Text('Dark'),
+                  value: ThemeMode.dark,
+                ),
+              ],
+              onChanged: (ThemeMode? newThemeMode) {
+                if (newThemeMode != null) {
+                  themeProvider.setThemeMode(newThemeMode);
+                }
+              },
             ),
-            ListTile(
-              title: const Text('Light'),
-              leading: Radio<String>(
-                value: 'Light',
-                groupValue: _themePreference,
-                onChanged: (value) {
-                  _setThemePreference(value!);
-                },
-              ),
-            ),
-            ListTile(
-              title: const Text('Dark'),
-              leading: Radio<String>(
-                value: 'Dark',
-                groupValue: _themePreference,
-                onChanged: (value) {
-                  _setThemePreference(value!);
-                },
-              ),
-            ),
-            ListTile(
-              title: const Text('System Default'),
-              leading: Radio<String>(
-                value: 'System Default',
-                groupValue: _themePreference,
-                onChanged: (value) {
-                  _setThemePreference(value!);
-                },
-              ),
-            ),
-          ],
-        ),
+          ),
+          Divider(),
+          ListTile(
+            leading: Icon(Icons.import_export),
+            title: Text('Export Data'),
+            subtitle: Text('Export your goals and achievements'),
+            onTap: () => _exportData(context),
+          ),
+          ListTile(
+            leading: Icon(Icons.file_upload),
+            title: Text('Import Data'),
+            subtitle: Text('Import goals and achievements from a file'),
+            onTap: () => _importData(context),
+          ),
+        ],
       ),
     );
   }
