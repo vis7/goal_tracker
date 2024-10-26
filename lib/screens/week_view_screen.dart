@@ -237,6 +237,12 @@ class _WeekViewScreenState extends State<WeekViewScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (_goals.isEmpty) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+
     return Scaffold(
       drawer: SideBar(),
       appBar: AppBar(title: Text('Week View')),

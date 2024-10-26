@@ -262,6 +262,25 @@ class _MonthViewScreenState extends State<MonthViewScreen> {
     });
   }
 
+  // Toggle between done/not done/blank statuses for goals
+  void _toggleStatus(Goal goal, DateTime day) async {
+    String formattedDay = day.toIso8601String().split('T')[0]; // Format day
+
+    setState(() {
+      String? currentStatus = goal.daysTracking[formattedDay];
+      if (currentStatus == null || currentStatus == '') {
+        goal.daysTracking[formattedDay] = 'yes'; // Mark as done
+      } else if (currentStatus == 'yes') {
+        goal.daysTracking[formattedDay] = 'no'; // Mark as not done
+      } else {
+        goal.daysTracking[formattedDay] = ''; // Clear status
+      }
+    });
+
+    // Update the goal in the database
+    await DatabaseHelper().updateGoal(goal);
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_goals.isEmpty) {
