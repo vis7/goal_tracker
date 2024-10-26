@@ -3,6 +3,7 @@
 import 'package:flutter/material.dart';
 import 'package:goal_tracker/screens/goal_create_screen.dart';
 import 'package:goal_tracker/screens/goal_list_screen.dart';
+import 'package:goal_tracker/screens/goal_edit_screen.dart';
 import 'package:goal_tracker/screens/month_view_screen.dart';
 import 'package:goal_tracker/screens/settings_screen.dart';
 import 'package:goal_tracker/screens/week_view_screen.dart';
@@ -24,6 +25,9 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/data/latest.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
 
+// Import the Goal model
+import 'package:goal_tracker/models/goal.dart';
+
 // Initialize the FlutterLocalNotificationsPlugin
 final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
     FlutterLocalNotificationsPlugin();
@@ -37,8 +41,8 @@ Future<void> main() async {
     databaseFactory = databaseFactoryFfi;
   }
 
-  // Initialize the database
-  await DBHelper.instance.initDB();
+  // Initialize the database by accessing the getter
+  await DBHelper.instance.database;
 
   // Initialize time zones
   tz.initializeTimeZones();
@@ -46,9 +50,13 @@ Future<void> main() async {
   // Initialize notifications
   await _initializeNotifications();
 
+  // Initialize the ThemeProvider and load theme from preferences
+  final themeProvider = ThemeProvider();
+  await themeProvider.loadThemeFromPrefs();
+
   runApp(
     ChangeNotifierProvider(
-      create: (_) => ThemeProvider(),
+      create: (_) => themeProvider,
       child: GoalTrackerApp(),
     ),
   );
@@ -120,13 +128,18 @@ class GoalTrackerApp extends StatelessWidget {
     final themeProvider = Provider.of<ThemeProvider>(context);
     return MaterialApp(
       title: 'Goal Tracker',
-      theme: themeProvider.getTheme(),
-      darkTheme: ThemeData.dark(),
-      themeMode: themeProvider.getThemeMode,
+      theme: ThemeData.light(), // Provide light theme
+      darkTheme: ThemeData.dark(), // Provide dark theme
+      themeMode: themeProvider.getThemeMode, // Use theme mode from provider
       initialRoute: '/',
       routes: {
         '/': (context) => GoalListScreen(),
         '/add_goal': (context) => GoalCreateScreen(),
+        '/edit_goal': (context) {
+          // Extract Goal object from arguments
+          final args = ModalRoute.of(context)!.settings.arguments as Goal;
+          return GoalEditScreen(goal: args);
+        },
         '/week_view': (context) => WeekViewScreen(),
         '/month_view': (context) => MonthViewScreen(),
         '/settings': (context) => SettingsScreen(),

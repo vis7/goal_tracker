@@ -3,7 +3,9 @@
 import 'package:flutter/material.dart';
 import 'package:goal_tracker/database/db_helper.dart';
 import 'package:goal_tracker/models/goal.dart';
+import 'package:goal_tracker/widgets/goal_tile.dart';
 import 'package:goal_tracker/widgets/sidebar.dart';
+import 'goal_detail_screen.dart';
 
 class GoalListScreen extends StatefulWidget {
   @override
@@ -11,54 +13,71 @@ class GoalListScreen extends StatefulWidget {
 }
 
 class _GoalListScreenState extends State<GoalListScreen> {
-  List<Goal> _goals = [];
+  late Future<List<Goal>> _goalsFuture;
 
   @override
   void initState() {
     super.initState();
-    _fetchGoals();
+    _goalsFuture = DBHelper.instance.getGoals();
   }
 
-  void _fetchGoals() async {
-    final goals = await DBHelper.instance.getGoals();
+  Future<void> _fetchGoals() async {
     setState(() {
-      _goals = goals;
+      _goalsFuture = DBHelper.instance.getGoals();
     });
   }
 
-  void _deleteGoal(int id) async {
-    await DBHelper.instance.deleteGoal(id);
+  Future<void> _deleteGoal(int goalId) async {
+    await DBHelper.instance.deleteGoal(goalId);
     _fetchGoals();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      drawer: SideBar(),
-      appBar: AppBar(title: Text('Goals')),
-      body: _goals.isEmpty
-          ? Center(child: Text('No goals added yet.'))
-          : ListView.builder(
-              itemCount: _goals.length,
+      appBar: AppBar(
+        title: Text('My Goals'),
+      ),
+      drawer: SideBar(), // Include the drawer
+      body: FutureBuilder<List<Goal>>(
+        future: _goalsFuture,
+        builder: (context, snapshot) {
+          if (snapshot.hasData) {
+            final goals = snapshot.data!;
+            if (goals.isEmpty) {
+              return Center(child: Text('No goals available'));
+            }
+            return ListView.builder(
+              itemCount: goals.length,
               itemBuilder: (context, index) {
-                final goal = _goals[index];
-                return ListTile(
-                  title: Text(goal.title),
-                  subtitle: Text(goal.description),
-                  trailing: IconButton(
-                    icon: Icon(Icons.delete, color: Colors.red),
-                    onPressed: () => _deleteGoal(goal.id!),
-                  ),
+                final goal = goals[index];
+                return GoalTile(
+                  goal: goal,
+                  onDelete: () => _deleteGoal(goal.id!),
                   onTap: () {
-                    // Optional: Navigate to a detailed view or edit screen
+                    Navigator.pushNamed(
+                      context,
+                      '/edit_goal',
+                      arguments: goal, // Passing the Goal object
+                    ).then((_) {
+                      // Refresh the goals list after returning
+                      _fetchGoals();
+                    });
                   },
                 );
               },
-            ),
+            );
+          } else if (snapshot.hasError) {
+            return Center(child: Text('Error fetching goals'));
+          } else {
+            return Center(child: CircularProgressIndicator());
+          }
+        },
+      ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () async {
-          await Navigator.pushNamed(context, '/add_goal');
-          _fetchGoals();
+        onPressed: () {
+          // Navigate to add goal screen
+          Navigator.pushNamed(context, '/add_goal').then((_) => _fetchGoals());
         },
         child: Icon(Icons.add),
       ),

@@ -1,31 +1,33 @@
 // lib/models/goal_status.dart
 
-import 'package:intl/intl.dart';
-
 class GoalStatus {
-  int? id;
-  int goalId;
-  DateTime date;
+  final int? id;
+  final int goalId;
+  final DateTime date;
   bool isDone;
 
   GoalStatus({
     this.id,
     required this.goalId,
     required this.date,
-    required this.isDone,
+    this.isDone = true, // Defaults to true when created
   });
 
-  factory GoalStatus.fromMap(Map<String, dynamic> json) => GoalStatus(
-        id: json['id'],
-        goalId: json['goalId'],
-        date: DateFormat('yyyy-MM-dd').parse(json['date']),
-        isDone: json['isDone'] == 1,
-      );
+  Map<String, dynamic> toMap() {
+    return {
+      'id': id,
+      'goalId': goalId,
+      'date': date.toIso8601String(),
+      'isDone': isDone ? 1 : 0,
+    };
+  }
 
-  Map<String, dynamic> toMap() => {
-        'id': id,
-        'goalId': goalId,
-        'date': DateFormat('yyyy-MM-dd').format(date),
-        'isDone': isDone ? 1 : 0,
-      };
+  factory GoalStatus.fromMap(Map<String, dynamic> map) {
+    return GoalStatus(
+      id: map['id'],
+      goalId: map['goalId'],
+      date: DateTime.parse(map['date']),
+      isDone: map['isDone'] == 1,
+    );
+  }
 }

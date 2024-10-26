@@ -6,39 +6,33 @@ import 'package:shared_preferences/shared_preferences.dart';
 class ThemeProvider with ChangeNotifier {
   ThemeMode _themeMode = ThemeMode.system;
 
-  ThemeProvider() {
-    _loadTheme();
-  }
-
   ThemeMode get getThemeMode => _themeMode;
 
+  // You can customize your themes here
   ThemeData getTheme() {
-    switch (_themeMode) {
-      case ThemeMode.dark:
-        return ThemeData.dark();
-      case ThemeMode.light:
-      default:
-        return ThemeData.light();
-    }
+    return ThemeData();
   }
 
-  void toggleTheme(bool isDark) {
-    _themeMode = isDark ? ThemeMode.dark : ThemeMode.light;
-    _saveTheme();
+  void setThemeMode(ThemeMode themeMode) {
+    _themeMode = themeMode;
     notifyListeners();
+    _saveThemeToPrefs();
   }
 
-  void _loadTheme() async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    bool? isDark = prefs.getBool('isDark');
-    if (isDark != null) {
-      _themeMode = isDark ? ThemeMode.dark : ThemeMode.light;
+  Future<void> _saveThemeToPrefs() async {
+    final prefs = await SharedPreferences.getInstance();
+    prefs.setString('themeMode', _themeMode.toString().split('.').last);
+  }
+
+  Future<void> loadThemeFromPrefs() async {
+    final prefs = await SharedPreferences.getInstance();
+    final themeString = prefs.getString('themeMode');
+    if (themeString != null) {
+      _themeMode = ThemeMode.values.firstWhere(
+        (e) => e.toString() == 'ThemeMode.$themeString',
+        orElse: () => ThemeMode.system,
+      );
       notifyListeners();
     }
-  }
-
-  void _saveTheme() async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    prefs.setBool('isDark', _themeMode == ThemeMode.dark);
   }
 }

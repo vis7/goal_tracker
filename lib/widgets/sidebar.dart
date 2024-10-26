@@ -7,40 +7,46 @@ class SideBar extends StatelessWidget {
   Widget build(BuildContext context) {
     return Drawer(
       child: ListView(
+        padding: EdgeInsets.zero,
         children: [
           DrawerHeader(
-            child: Text('Goal Tracker',
-                style: TextStyle(color: Colors.white, fontSize: 24)),
             decoration: BoxDecoration(
-              color: Colors.blue,
+              color: Theme.of(context).primaryColor,
+            ),
+            child: Text(
+              'Goal Tracker',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 24,
+              ),
             ),
           ),
           ListTile(
-            leading: Icon(Icons.list),
-            title: Text('Goals'),
+            leading: Icon(Icons.home),
+            title: Text('Home'),
             onTap: () {
-              Navigator.pushReplacementNamed(context, '/');
+              Navigator.pushNamed(context, '/');
             },
           ),
           ListTile(
-            leading: Icon(Icons.view_week),
+            leading: Icon(Icons.calendar_view_week),
             title: Text('Week View'),
             onTap: () {
-              Navigator.pushReplacementNamed(context, '/week_view');
+              Navigator.pushNamed(context, '/week_view');
             },
           ),
           ListTile(
-            leading: Icon(Icons.view_module),
+            leading: Icon(Icons.calendar_today),
             title: Text('Month View'),
             onTap: () {
-              Navigator.pushReplacementNamed(context, '/month_view');
+              Navigator.pushNamed(context, '/month_view');
             },
           ),
           ListTile(
             leading: Icon(Icons.settings),
             title: Text('Settings'),
             onTap: () {
-              Navigator.pushReplacementNamed(context, '/settings');
+              Navigator.pushNamed(context, '/settings');
             },
           ),
         ],

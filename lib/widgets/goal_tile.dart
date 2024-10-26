@@ -18,7 +18,7 @@ class GoalTile extends StatelessWidget {
   Widget build(BuildContext context) {
     return ListTile(
       title: Text(goal.title),
-      subtitle: Text(goal.description),
+      subtitle: Text(goal.description ?? ''), // Handle null description
       trailing: IconButton(
         icon: Icon(Icons.delete, color: Colors.red),
         onPressed: onDelete,

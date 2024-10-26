@@ -3,7 +3,6 @@
 import 'package:flutter/material.dart';
 import 'package:goal_tracker/database/db_helper.dart';
 import 'package:goal_tracker/models/goal.dart';
-import 'package:goal_tracker/models/goal_status.dart';
 import 'package:goal_tracker/widgets/sidebar.dart';
 import 'package:intl/intl.dart';
 
@@ -37,99 +36,76 @@ class _WeekViewScreenState extends State<WeekViewScreen> {
 
   Future<void> _toggleGoalStatus(Goal goal, DateTime date) async {
     DateTime normalizedDate = DateTime(date.year, date.month, date.day);
+    DateTime today = DateTime.now();
+    DateTime normalizedToday = DateTime(today.year, today.month, today.day);
+    DateTime goalStartDate = DateTime(
+      goal.startDate.year,
+      goal.startDate.month,
+      goal.startDate.day,
+    );
 
-    if (normalizedDate.isAfter(DateTime.now())) {
+    if (normalizedDate.isAfter(normalizedToday)) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text("Cannot mark future dates")),
       );
       return;
     }
 
-    GoalStatus? status =
-        await DBHelper.instance.getGoalStatus(goal.id!, normalizedDate);
-    if (status == null) {
-      await DBHelper.instance.insertGoalStatus(GoalStatus(
-        goalId: goal.id!,
-        date: normalizedDate,
-        isDone: true,
-      ));
-    } else {
-      if (status.isDone == true) {
-        status.isDone = false;
-        await DBHelper.instance.updateGoalStatus(status);
-      } else if (status.isDone == false) {
-        await DBHelper.instance.deleteGoalStatus(status.id!);
-      }
+    if (normalizedDate.isBefore(goalStartDate)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Cannot mark dates before goal start date")),
+      );
+      return;
     }
+
+    bool isMarked =
+        await DBHelper.instance.isAchievementMarked(goal.id!, normalizedDate);
+
+    if (isMarked) {
+      await DBHelper.instance.unmarkAchievement(goal.id!, normalizedDate);
+    } else {
+      await DBHelper.instance.markAchievement(goal.id!, normalizedDate);
+    }
+
     setState(() {});
   }
 
-  void _showAchievementDialog(Goal goal) async {
-    int totalPossibleDays = 0;
-    int totalAchievedDays = 0;
-
-    DateTime endDate = goal.endDate ?? DateTime.now();
-    DateTime date = goal.startDate;
-    int eventsLeft = goal.eventCount ?? -1;
-
-    while (date.isBefore(endDate.add(Duration(days: 1)))) {
-      int weekdayIndex = date.weekday - 1;
-      bool isGoalDay = goal.daysOfWeek[weekdayIndex];
-
-      if (isGoalDay || eventsLeft == 0) {
-        totalPossibleDays++;
-      }
-
-      GoalStatus? status =
-          await DBHelper.instance.getGoalStatus(goal.id!, date);
-      if (status != null && status.isDone == true) {
-        totalAchievedDays++;
-      }
-
-      if (eventsLeft > 0) {
-        eventsLeft--;
-        if (eventsLeft == 0) break;
-      }
-
-      date = date.add(Duration(days: 1));
-    }
-
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: Text('Achievement'),
-          content: Text('You have achieved $totalAchievedDays out of '
-              '$totalPossibleDays days.'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: Text('OK'),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
   Widget _buildGoalRow(Goal goal) {
-    return FutureBuilder<List<GoalStatus>>(
-      future: DBHelper.instance.getGoalStatuses(
-        goal.id!,
-        _currentWeekStart,
-        _currentWeekStart.add(Duration(days: 6)),
-      ),
+    // Define goalStartDate here
+    DateTime goalStartDate = DateTime(
+      goal.startDate.year,
+      goal.startDate.month,
+      goal.startDate.day,
+    );
+
+    return FutureBuilder<List<DateTime>>(
+      future: DBHelper.instance.getAchievementsForGoal(goal.id!),
       builder: (context, snapshot) {
-        List<GoalStatus> statuses = snapshot.data ?? [];
-        Map<String, GoalStatus> statusMap = {
-          for (var status in statuses)
-            DateFormat('yyyy-MM-dd').format(status.date): status
-        };
+        List<DateTime> achievements = snapshot.data ?? [];
+
+        // Calculate total possible days and total achieved days
+        DateTime today = DateTime.now();
+        DateTime normalizedToday =
+            DateTime(today.year, today.month, today.day);
+        DateTime endDate = normalizedToday;
+        DateTime date = goalStartDate;
+        int totalPossibleDays = 0;
+
+        while (date.isBefore(endDate.add(Duration(days: 1)))) {
+          totalPossibleDays++;
+          date = date.add(Duration(days: 1));
+        }
+
+        int totalAchievedDays = achievements
+            .where((achievementDate) =>
+                !achievementDate.isAfter(normalizedToday) &&
+                !achievementDate.isBefore(goalStartDate))
+            .length;
 
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Goal Title with Achievement Info
+            // Goal Title with Achievement Count
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 8.0),
               child: Row(
@@ -139,9 +115,9 @@ class _WeekViewScreenState extends State<WeekViewScreen> {
                     goal.title,
                     style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                   ),
-                  IconButton(
-                    icon: Icon(Icons.info),
-                    onPressed: () => _showAchievementDialog(goal),
+                  Text(
+                    '$totalAchievedDays/$totalPossibleDays',
+                    style: TextStyle(fontSize: 16),
                   ),
                 ],
               ),
@@ -149,22 +125,25 @@ class _WeekViewScreenState extends State<WeekViewScreen> {
             // Days Row
             Row(
               children: List.generate(7, (index) {
-                DateTime date = _currentWeekStart.add(Duration(days: index));
-                String dateKey = DateFormat('yyyy-MM-dd').format(date);
-                bool isToday = DateTime.now().difference(date).inDays == 0 &&
-                    DateTime.now().day == date.day &&
-                    DateTime.now().month == date.month &&
-                    DateTime.now().year == date.year;
-                bool isFuture = date.isAfter(DateTime.now());
-                GoalStatus? status = statusMap[dateKey];
-                bool? isDone = status?.isDone;
-                bool isGoalDay = goal.daysOfWeek[index];
+                DateTime date =
+                    _currentWeekStart.add(Duration(days: index));
+                DateTime normalizedDate =
+                    DateTime(date.year, date.month, date.day);
+                bool isToday = normalizedDate == normalizedToday;
+                bool isFuture = normalizedDate.isAfter(normalizedToday);
+                bool isBeforeStartDate =
+                    normalizedDate.isBefore(goalStartDate);
+                bool isMarked = achievements.any((achievementDate) =>
+                    achievementDate == normalizedDate);
+
+                // All days are goal days now
+                bool isGoalDay = true;
 
                 Color bgColor;
                 Widget content;
 
                 if (isGoalDay) {
-                  if (isDone == true) {
+                  if (isMarked) {
                     bgColor = Colors.green;
                     content = Column(
                       mainAxisAlignment: MainAxisAlignment.center,
@@ -175,19 +154,6 @@ class _WeekViewScreenState extends State<WeekViewScreen> {
                           textAlign: TextAlign.center,
                         ),
                         Icon(Icons.check, color: Colors.white, size: 16),
-                      ],
-                    );
-                  } else if (isDone == false) {
-                    bgColor = Colors.red;
-                    content = Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(
-                          DateFormat('EEE\nd').format(date),
-                          style: TextStyle(color: Colors.white, fontSize: 12),
-                          textAlign: TextAlign.center,
-                        ),
-                        Icon(Icons.close, color: Colors.white, size: 16),
                       ],
                     );
                   } else {
@@ -209,7 +175,7 @@ class _WeekViewScreenState extends State<WeekViewScreen> {
 
                 return Expanded(
                   child: GestureDetector(
-                    onTap: isGoalDay && !isFuture
+                    onTap: !isFuture && !isBeforeStartDate
                         ? () => _toggleGoalStatus(goal, date)
                         : null,
                     child: Container(
